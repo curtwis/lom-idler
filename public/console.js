@@ -90,31 +90,6 @@ socket.on('navigation', (navData) => {
     // Navigation event received but not displayed
 });
 
-function navigate() {
-    const url = urlInput.value.trim();
-    if (!url) {
-        alert('Please enter a URL');
-        return;
-    }
-
-    fetch('/navigate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            urlInput.value = '';
-        } else {
-            alert('Navigation failed: ' + data.error);
-        }
-    })
-    .catch(error => {
-        alert('Navigation error: ' + error.message);
-    });
-}
-
 function clearConsole() {
     socket.emit('clear-console');
 }
@@ -152,13 +127,6 @@ function reconnect() {
         console.error('Refresh error:', error.message);
     });
 }
-
-// Allow Enter key to navigate
-urlInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        navigate();
-    }
-});
 
 // Function to check if console message indicates disconnection or connection
 function checkForDisconnection(message) {
