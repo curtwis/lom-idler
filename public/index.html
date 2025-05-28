@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOM - Idler</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #2d2d30;
+            border-radius: 8px;
+            border-left: 4px solid #007acc;
+        }
+
+        .header h1 {
+            color: #4ec9b0;
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .header p {
+            color: #9cdcfe;
+            margin: 5px 0 0 0;
+            font-size: 0.9rem;
+        }
+
+        #currentStatus {
+            color: #4ec9b0;
+            font-weight: bold;
+            text-transform: uppercase;
+            background: rgba(78, 201, 176, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(78, 201, 176, 0.3);
+        }
+
+        #currentStatus.disconnected {
+            color: #f44747;
+            background: rgba(244, 71, 71, 0.1);
+            border: 1px solid rgba(244, 71, 71, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .controls input {
+            flex: 1;
+            padding: 10px;
+            background: #2d2d30;
+            color: #d4d4d4;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .controls input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background: #1177bb;
+        }
+
+        .btn.danger {
+            background: #d14836;
+        }
+
+        .btn.danger:hover {
+            background: #e74c3c;
+        }
+
+        .reconnect-btn {
+            background: linear-gradient(135deg, #f44747, #d73a3a);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(244, 71, 71, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: none;
+        }
+
+        .reconnect-btn:hover {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(244, 71, 71, 0.4);
+        }
+
+        .reconnect-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(244, 71, 71, 0.3);
+        }
+
+        .reconnect-btn.visible {
+            display: inline-block;
+        }
+
+        .console-container {
+            flex: 1;
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-header {
+            background: #2d2d30;
+            padding: 10px 15px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .console-title {
+            color: #9cdcfe;
+            font-weight: bold;
+        }
+
+        .console-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .console-output {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .console-message {
+            margin-bottom: 2px;
+            padding: 2px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .message-timestamp {
+            color: #6a9955;
+            min-width: 70px;
+            font-size: 11px;
+        }
+
+        .message-type {
+            min-width: 60px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .message-type.log {
+            color: #d4d4d4;
+        }
+
+        .message-type.info {
+            color: #9cdcfe;
+        }
+
+        .message-type.warn {
+            color: #dcdcaa;
+        }
+
+        .message-type.error,
+        .message-type.pageerror {
+            color: #f44747;
+        }
+
+        .message-type.debug {
+            color: #b5cea8;
+        }
+
+        .message-type.requestfailed {
+            color: #d19a66;
+        }
+
+        .message-text {
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .message-location {
+            color: #569cd6;
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .navigation-event {
+            background: rgba(0, 122, 204, 0.1);
+            border-left: 3px solid #007acc;
+            padding: 8px 10px;
+            margin: 5px 0;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .no-messages {
+            text-align: center;
+            color: #6a6a6a;
+            padding: 40px;
+            font-style: italic;
+        }
+
+        /* Scrollbar styling */
+        .console-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .console-output::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        .console-output::-webkit-scrollbar-thumb {
+            background: #3e3e42;
+            border-radius: 4px;
+        }
+
+        .console-output::-webkit-scrollbar-thumb:hover {
+            background: #4e4e52;
+        }
+
+        .screenshot-container {
+            width: 400px;
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screenshot-header {
+            background: #2d2d30;
+            padding: 10px 15px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .screenshot-title {
+            color: #9cdcfe;
+            font-weight: bold;
+        }
+
+        .screenshot-status {
+            color: #6a9955;
+            font-size: 12px;
+        }
+
+        .screenshot-display {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #252526;
+            position: relative;
+        }
+
+        #browserScreenshot {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .disconnected-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            background: rgba(30, 30, 30, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+            border: 2px solid #f44747;
+        }
+
+        .disconnected-text {
+            color: #f44747;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .disconnected-subtitle {
+            color: #9cdcfe;
+            font-size: 16px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+            <p>Current Status: <span id="currentStatus">INITIALIZING</span></p>
+            <button class="btn reconnect-btn" onclick="reconnect()">Reconnect</button>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 20px; flex: 1; min-height: 0;">
+        <!-- Screenshot Section -->
+        <div class="screenshot-container" style="flex: 1; width: 100%;">
+            <div class="screenshot-header">
+                <div class="screenshot-title">Live Browser View</div>
+                <div class="screenshot-status">
+                    <span id="screenshotStatus">Loading...</span>
+                </div>
+            </div>
+            <div class="screenshot-display">
+                <img id="browserScreenshot" src="/screenshot" alt="Browser Screenshot" />
+                <div id="disconnectedOverlay" class="disconnected-overlay" style="display: none;">
+                    <div class="disconnected-text">DISCONNECTED</div>
+                    <div class="disconnected-subtitle">Browser connection lost</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/console.js"></script>
+</body>
+</html> 
