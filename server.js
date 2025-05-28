@@ -31,7 +31,9 @@ const consoleMessages = [];
 
 // Puppeteer configuration for persistent, non-headless browser
 const getPuppeteerConfig = () => ({
-  headless: true, // Show the browser window
+
+  headless: true, // Change this to false for the first launch so you can set up your credentials, then change it back to true
+
   userDataDir: USER_DATA_DIR, // Persistent directory for cookies, passwords, etc.
   args: [
     '--no-sandbox',

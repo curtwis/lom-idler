@@ -160,11 +160,18 @@ urlInput.addEventListener('keypress', (e) => {
     }
 });
 
-// Function to check if console message indicates disconnection
+// Function to check if console message indicates disconnection or connection
 function checkForDisconnection(message) {
     if (message.text && message.text.includes('onclose: wasClean = false, code=1006')) {
         currentStatus.textContent = 'Disconnected';
         currentStatus.classList.add('disconnected');
         showDisconnectedOverlay();
+    }
+    
+    // Check for connection indicators
+    if (message.text && message.text.includes('Third-party cookie will be blocked. Learn more in the Issues tab')) {
+        currentStatus.textContent = 'Connected';
+        currentStatus.classList.remove('disconnected');
+        hideDisconnectedOverlay();
     }
 } 
