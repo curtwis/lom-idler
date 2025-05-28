@@ -22,7 +22,7 @@
 ## Initial Setup
 
 **For first-time login:**
-1. Change line 35 in `server.js` from `headless: false` to `headless: true`
+1. Change line 35 in `server.js` from `headless: true` to `headless: false`
    This will allow you to interact with the browser window and login for the first time
 
 2. After the initial login, change headless back to `false` for background operation
